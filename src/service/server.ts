@@ -44,6 +44,25 @@ export function createServer() {
     }
   });
 
+  // List recent audits (DB only) — lean projection for the history view.
+  app.get("/api/audit", async (_req: Request, res: Response) => {
+    try {
+      const history = await prisma.auditReport.findMany({
+        orderBy: { created_at: "desc" },
+        select: {
+          job_id: true,
+          target_url: true,
+          created_at: true,
+          total_violations: true,
+        },
+      });
+      return res.json(history);
+    } catch (error) {
+      logger.error(`Failed to list audits: ${(error as Error).message}`);
+      return res.status(503).json({ error: "Failed to list audit history" });
+    }
+  });
+
   // Status by job id. The BullMQ job is the source of truth for STATE; the
   // persisted Prisma report is the source of truth for completed RESULTS.
   app.get("/api/audit/:id", async (req: Request, res: Response) => {
@@ -58,6 +77,15 @@ export function createServer() {
     try {
       const job = await auditQueue.getJob(id);
       if (!job) {
+        // Completed jobs are evicted from the queue after a while — fall back to
+        // the persisted report so the history view can still open old audits.
+        const report = await prisma.auditReport.findUnique({
+          where: { job_id: id },
+          include: { steps: { include: { violations: true } } },
+        });
+        if (report) {
+          return res.json(report);
+        }
         return res.status(404).json({ error: `Job ${id} not found` });
       }
       const state = await job.getState();
@@ -102,5 +130,5 @@ export function createServer() {
 
 createServer().listen(PORT, () => {
   logger.success(`API listening on http://localhost:${PORT}`);
-  logger.info("POST /api/audit  ·  GET /api/audit/:id  ·  GET /health");
+  logger.info("POST /api/audit  ·  GET /api/audit  ·  GET /api/audit/:id  ·  GET /health");
 });
