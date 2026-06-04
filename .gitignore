@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.ux-audit-reports/
+*.log
+.DS_Store
+.env
+
+/src/generated/prisma

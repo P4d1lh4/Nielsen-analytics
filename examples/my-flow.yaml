@@ -1,0 +1,30 @@
+# Example audit flow for the Sauce Labs demo app (a real, login-driven SPA).
+# The engine first navigates to `target_url`, then runs each flow step in order,
+# capturing a screenshot + accessibility tree + cleaned DOM after every step.
+
+target_url: "https://www.saucedemo.com"
+
+viewport:
+  width: 1366
+  height: 768
+
+flow:
+  - action: type
+    selector: "#user-name"
+    text: "standard_user"
+
+  - action: type
+    selector: "#password"
+    text: "secret_sauce"
+
+  - action: click
+    selector: "#login-button"
+
+  - action: wait
+    ms: 1500
+
+  - action: click
+    selector: "[data-test='add-to-cart-sauce-labs-backpack']"
+
+  - action: click
+    selector: ".shopping_cart_link"

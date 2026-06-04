@@ -1,0 +1,113 @@
+# Shared app env — services talk to infra by SERVICE NAME on the compose network.
+x-app-env: &app-env
+  DATABASE_URL: postgresql://root:rootpassword@postgres:5432/ux_audit?schema=public
+  REDIS_URL: redis://redis:6379
+  S3_ENDPOINT: http://minio:9000
+  S3_REGION: us-east-1
+  S3_ACCESS_KEY: rootadmin
+  S3_SECRET_KEY: rootpassword
+  S3_BUCKET_NAME: ux-audit-bucket
+  S3_FORCE_PATH_STYLE: "true"
+  # Public URL must be reachable by CLIENTS (host), not the internal minio hostname.
+  S3_PUBLIC_URL: http://localhost:9000/ux-audit-bucket
+  # AI engine: agent-sdk needs an interactive Claude Code login (absent in a
+  # container), so containerized workers use the API engine. Provide AI_API_KEY.
+  AUDIT_ENGINE: ${AUDIT_ENGINE:-api}
+  AUDIT_MODEL: ${AUDIT_MODEL:-claude-sonnet-4-6}
+  AI_API_KEY: ${AI_API_KEY:-}
+
+services:
+  # ---------------- Infrastructure (unchanged) ----------------
+  redis:
+    image: redis:7-alpine
+    container_name: ux-audit-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: ux-audit-db
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: rootpassword
+      POSTGRES_DB: ux_audit
+    ports:
+      # Host 5432 is taken by a local Postgres install; publish on 5433 instead.
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U root -d ux_audit"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    container_name: ux-audit-storage
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: rootadmin
+      MINIO_ROOT_PASSWORD: rootpassword
+    ports:
+      - "9000:9000" # S3 API
+      - "9001:9001" # Console UI
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  minio-setup:
+    image: minio/mc:latest
+    container_name: ux-audit-storage-setup
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc alias set myminio http://minio:9000 rootadmin rootpassword;
+      /usr/bin/mc mb myminio/ux-audit-bucket --ignore-existing;
+      /usr/bin/mc anonymous set download myminio/ux-audit-bucket;
+      exit 0;
+      "
+
+  # ---------------- Application ----------------
+  api:
+    build: .
+    container_name: ux-audit-api
+    ports:
+      - "3000:3000"
+    environment: *app-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    restart: unless-stopped
+
+  worker:
+    build: .
+    container_name: ux-audit-worker
+    command: node dist/service/worker.js
+    environment: *app-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    # Chromium needs a larger /dev/shm than Docker's 64MB default, or it crashes.
+    shm_size: "1gb"
+    # Cap memory so a Chromium spike can't take down the host.
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+    restart: unless-stopped

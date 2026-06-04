@@ -1,0 +1,54 @@
+{
+  "name": "ux-audit",
+  "version": "0.2.0",
+  "description": "Heuristic UI QA & audit CLI — capture page state per step (run) and audit it with a multimodal LLM (analyze).",
+  "license": "MIT",
+  "bin": {
+    "ux-audit": "dist/index.js"
+  },
+  "main": "dist/index.js",
+  "files": [
+    "dist",
+    "examples"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
+    "rebuild": "npm run clean && npm run build",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts",
+    "serve": "tsx src/service/server.ts",
+    "worker": "tsx src/service/worker.ts",
+    "serve:built": "node dist/service/server.js",
+    "worker:built": "node dist/service/worker.js",
+    "prisma:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:migrate": "prisma migrate dev",
+    "postinstall": "playwright install chromium && prisma generate"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.3.161",
+    "@anthropic-ai/sdk": "^0.100.1",
+    "@aws-sdk/client-s3": "^3.1061.0",
+    "@prisma/client": "^6.19.3",
+    "bullmq": "^5.34.0",
+    "commander": "^12.1.0",
+    "dotenv": "^17.4.2",
+    "express": "^4.21.2",
+    "ioredis": "5.10.1",
+    "js-yaml": "^4.1.0",
+    "playwright": "^1.49.1",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^20.17.10",
+    "prisma": "^6.19.3",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

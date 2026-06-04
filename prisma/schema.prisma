@@ -1,0 +1,44 @@
+// Prisma schema for the UX-audit SaaS: relational audit reports + screenshots.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model AuditReport {
+  id               String      @id @default(uuid())
+  job_id           String      @unique
+  target_url       String
+  created_at       DateTime    @default(now())
+  total_violations Int         @default(0)
+  steps            AuditStep[]
+
+  @@map("audit_reports")
+}
+
+model AuditStep {
+  id             String      @id @default(uuid())
+  report_id      String
+  step_name      String
+  screenshot_url String
+  report         AuditReport @relation(fields: [report_id], references: [id], onDelete: Cascade)
+  violations     Violation[]
+
+  @@map("audit_steps")
+}
+
+model Violation {
+  id                String    @id @default(uuid())
+  step_id           String
+  heuristic         String
+  severity          Int
+  issue_description String
+  code_fix          String
+  step              AuditStep @relation(fields: [step_id], references: [id], onDelete: Cascade)
+
+  @@map("violations")
+}
