@@ -12,11 +12,13 @@ datasource db {
 model AuditReport {
   id               String      @id @default(uuid())
   job_id           String      @unique
+  user_id          String
   target_url       String
   created_at       DateTime    @default(now())
   total_violations Int         @default(0)
   steps            AuditStep[]
 
+  @@index([user_id])
   @@map("audit_reports")
 }
 

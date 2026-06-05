@@ -33,6 +33,7 @@
     "@anthropic-ai/claude-agent-sdk": "^0.3.161",
     "@anthropic-ai/sdk": "^0.100.1",
     "@aws-sdk/client-s3": "^3.1061.0",
+    "@clerk/express": "^2.1.23",
     "@prisma/client": "^6.19.3",
     "bullmq": "^5.34.0",
     "commander": "^12.1.0",

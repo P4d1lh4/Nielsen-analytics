@@ -39,11 +39,18 @@ const waitAction = z
   })
   .strict();
 
+const scrollAction = z
+  .object({
+    action: z.literal("scroll"),
+  })
+  .strict();
+
 export const flowActionSchema = z.discriminatedUnion("action", [
   gotoAction,
   clickAction,
   typeAction,
   waitAction,
+  scrollAction,
 ]);
 
 export const configSchema = z

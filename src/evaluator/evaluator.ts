@@ -24,24 +24,38 @@ export interface StepAnalyzer {
   analyzeStep(entry: ManifestEntry): Promise<StepResult>;
 }
 
-/** Runs an analyzer over every step sequentially, logging progress. Shared by both engines. */
+// Max concurrent step analyses. Each is an independent LLM request, so a few run
+// in parallel to cut wall-clock on long flows. Lower to 1 if the agent-sdk engine
+// stalls under load (AI_CONCURRENCY env).
+const AI_CONCURRENCY = Number(process.env.AI_CONCURRENCY ?? 3);
+
+/** Runs an analyzer over every step with bounded concurrency, logging progress. Shared by both engines. */
 export async function runAnalysis(
   analyzer: StepAnalyzer,
   entries: ManifestEntry[],
 ): Promise<StepResult[]> {
-  const results: StepResult[] = [];
   const total = entries.length;
-  for (let i = 0; i < total; i++) {
-    const entry = entries[i]!;
-    logger.step(i + 1, total, `analyze:${entry.action}`, { step: entry.step });
-    const result = await analyzer.analyzeStep(entry);
-    if (result.error) {
-      logger.error(`Step ${entry.step} analysis failed: ${result.error}`);
-    } else {
-      logger.success(`Step ${entry.step}: ${result.audit!.violations.length} violation(s) found`);
+  const results: StepResult[] = new Array(total);
+  let next = 0;
+
+  async function consume(): Promise<void> {
+    while (true) {
+      const i = next++;
+      if (i >= total) return;
+      const entry = entries[i]!;
+      logger.step(i + 1, total, `analyze:${entry.action}`, { step: entry.step });
+      const result = await analyzer.analyzeStep(entry); // analyzeStep never throws
+      if (result.error) {
+        logger.error(`Step ${entry.step} analysis failed: ${result.error}`);
+      } else {
+        logger.success(`Step ${entry.step}: ${result.audit!.violations.length} violation(s) found`);
+      }
+      results[i] = result;
     }
-    results.push(result);
   }
+
+  const lanes = Math.max(1, Math.min(AI_CONCURRENCY, total || 1));
+  await Promise.all(Array.from({ length: lanes }, () => consume()));
   return results;
 }
 

@@ -28,6 +28,17 @@ Cross-reference all three. The accessibility tree is the strongest evidence for 
 - \`element_selector\` must be a concrete CSS selector targeting the offending element (prefer id, data-* attributes, or a stable path). Use null only when the issue is page-wide and not tied to one element.
 - \`suggested_code_fix\` must be a concrete, applicable correction: a corrected HTML/CSS snippet or the exact ARIA attribute(s) to add. Do not write prose here.
 
+# Grouping of repeated elements — MANDATORY
+MANDATORY GROUPING: if multiple IDENTICAL elements share the SAME defect (e.g. 20 images with no \`alt\`, or 5 buttons with no focus state), report them as ONE SINGLE violation. State the quantity and the selector pattern inside \`issue_description\` (e.g. "12 itens · padrão de seletor: .card img"). NEVER create separate violations for the same defect across repeated components of a list or grid. A persistent element seen again across scroll steps (header, nav, cookie banner) must NOT be re-reported.
+
+# Output language — Brazilian Portuguese (pt-BR) — MANDATORY
+- Write the VALUE of \`issue_description\` strictly in Brazilian Portuguese (pt-BR): clear, technical, concise. Never in English.
+- In \`suggested_code_fix\`, keep the code itself unchanged (valid HTML/CSS/ARIA); write any code comments or human-readable text inside it in pt-BR.
+- Do NOT translate or alter anything else — this preserves the TypeScript/JSON contracts:
+  - The JSON KEYS (\`heuristic\`, \`severity\`, \`issue_description\`, \`element_selector\`, \`suggested_code_fix\`) stay exactly as given, in English.
+  - The \`heuristic\` VALUE MUST remain one of the EXACT English Nielsen names listed above — translating it fails enum validation. Keep it in English.
+  - WCAG success-criterion names and codes (e.g. "1.1.1 Non-text Content") and the \`severity\` number stay unchanged.
+
 # Discipline
 - Base every finding strictly on evidence present in the provided artifacts. Do not speculate about behavior you cannot observe.
 - Do not invent issues to fill the report. If the step has no real violations, return an empty \`violations\` array.

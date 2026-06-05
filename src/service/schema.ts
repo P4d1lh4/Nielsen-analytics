@@ -19,8 +19,8 @@ export const auditRequestSchema = z.object({
     .optional(),
 });
 
-/** Data carried by an audit job. */
-export type AuditJobData = z.infer<typeof auditRequestSchema>;
+/** Data carried by an audit job (request body + the authenticated owner). */
+export type AuditJobData = z.infer<typeof auditRequestSchema> & { user_id: string };
 
 // The job RESULT type is the real audit report — see `AuditReport` in
 // `../evaluator/report`. The worker now returns the parsed `audit-report.json`.

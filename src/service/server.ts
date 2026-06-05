@@ -1,9 +1,10 @@
 import "dotenv/config";
 import express, { type Request, type Response, type NextFunction } from "express";
+import { clerkMiddleware, getAuth } from "@clerk/express";
 import { PrismaClient } from "@prisma/client";
 import { auditQueue } from "./queue";
 import { auditRequestSchema } from "./schema";
-import { REDIS_URL, isRedisReady } from "./connection";
+import { isRedisReady } from "./connection";
 import { logger } from "../logger";
 
 const PORT = Number(process.env.PORT ?? 3000);
@@ -14,15 +15,20 @@ const prisma = new PrismaClient();
 /** Builds the Express app (exported for testing without binding a port). */
 export function createServer() {
   const app = express();
-  app.use(express.json());
+  app.use(express.json({ limit: "1mb" }));
+  // Attach Clerk auth context to every request (reads CLERK_* from env).
+  app.use(clerkMiddleware());
 
-  // Liveness + Redis readiness.
+  // Liveness + Redis readiness (public).
   app.get("/health", (_req: Request, res: Response) => {
-    res.json({ status: "ok", redis: isRedisReady() ? "ready" : "down", redis_url: REDIS_URL });
+    res.json({ status: "ok", redis: isRedisReady() ? "ready" : "down" });
   });
 
   // Enqueue an audit job — returns 202 immediately, does not wait for completion.
   app.post("/api/audit", async (req: Request, res: Response) => {
+    const userId = getAuth(req).userId;
+    if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
     const parsed = auditRequestSchema.safeParse(req.body);
     if (!parsed.success) {
       return res.status(400).json({
@@ -36,7 +42,8 @@ export function createServer() {
     }
 
     try {
-      const job = await auditQueue.add("audit", parsed.data);
+      // Thread the authenticated owner into the job payload; the worker persists it.
+      const job = await auditQueue.add("audit", { ...parsed.data, user_id: userId });
       return res.status(202).json({ job_id: job.id, status: "queued" });
     } catch (error) {
       logger.error(`Failed to enqueue job: ${(error as Error).message}`);
@@ -45,9 +52,12 @@ export function createServer() {
   });
 
   // List recent audits (DB only) — lean projection for the history view.
-  app.get("/api/audit", async (_req: Request, res: Response) => {
+  app.get("/api/audit", async (req: Request, res: Response) => {
+    const userId = getAuth(req).userId;
+    if (!userId) return res.status(401).json({ error: "Unauthorized" });
     try {
       const history = await prisma.auditReport.findMany({
+        where: { user_id: userId },
         orderBy: { created_at: "desc" },
         select: {
           job_id: true,
@@ -66,6 +76,8 @@ export function createServer() {
   // Status by job id. The BullMQ job is the source of truth for STATE; the
   // persisted Prisma report is the source of truth for completed RESULTS.
   app.get("/api/audit/:id", async (req: Request, res: Response) => {
+    const userId = getAuth(req).userId;
+    if (!userId) return res.status(401).json({ error: "Unauthorized" });
     const id = req.params.id;
     if (!id) {
       return res.status(400).json({ error: "Missing job id" });
@@ -79,8 +91,8 @@ export function createServer() {
       if (!job) {
         // Completed jobs are evicted from the queue after a while — fall back to
         // the persisted report so the history view can still open old audits.
-        const report = await prisma.auditReport.findUnique({
-          where: { job_id: id },
+        const report = await prisma.auditReport.findFirst({
+          where: { job_id: id, user_id: userId },
           include: { steps: { include: { violations: true } } },
         });
         if (report) {
@@ -88,12 +100,18 @@ export function createServer() {
         }
         return res.status(404).json({ error: `Job ${id} not found` });
       }
+
+      // Ownership: a job that exists but isn't the caller's is treated as not-found
+      // (prevents leaking state / failedReason across tenants for in-flight jobs).
+      if (job.data.user_id !== userId) {
+        return res.status(404).json({ error: `Job ${id} not found` });
+      }
       const state = await job.getState();
 
       if (state === "completed") {
         // Pull the structured report from the DB (NOT from the BullMQ return value).
-        const report = await prisma.auditReport.findUnique({
-          where: { job_id: id },
+        const report = await prisma.auditReport.findFirst({
+          where: { job_id: id, user_id: userId },
           include: { steps: { include: { violations: true } } },
         });
         if (!report) {

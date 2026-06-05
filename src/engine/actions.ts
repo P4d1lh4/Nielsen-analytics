@@ -23,6 +23,10 @@ export async function executeAction(page: Page, action: FlowAction): Promise<voi
     case "wait":
       await page.waitForTimeout(action.ms);
       return;
+    case "scroll":
+      // Scroll down by one viewport height. No network wait needed.
+      await page.evaluate(() => window.scrollBy(0, window.innerHeight));
+      return;
   }
 }
 
@@ -40,5 +44,7 @@ export function describeAction(action: FlowAction): {
       return { name: "type", params: { selector: action.selector, text: action.text } };
     case "wait":
       return { name: "wait", params: { ms: action.ms } };
+    case "scroll":
+      return { name: "scroll", params: {} };
   }
 }

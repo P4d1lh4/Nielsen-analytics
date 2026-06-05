@@ -21,8 +21,13 @@ import { writeReport, type AuditReport } from "../evaluator/report";
 
 // Max 2 jobs at once (each spins a real browser + LLM).
 const CONCURRENCY = Number(process.env.WORKER_CONCURRENCY ?? 2);
-// Hard wall-clock cap per job so a stuck browser/LLM can't run forever.
-const JOB_TIMEOUT_MS = Number(process.env.JOB_TIMEOUT_MS ?? 180_000);
+// Per-job wall-clock budget scales with step count (each step = 1 AI analysis),
+// so large flows aren't cut off. A stuck browser/LLM still can't exceed JOB_MAX.
+const JOB_BASE_TIMEOUT_MS = Number(process.env.JOB_BASE_TIMEOUT_MS ?? 120_000);
+const JOB_PER_STEP_TIMEOUT_MS = Number(process.env.JOB_PER_STEP_TIMEOUT_MS ?? 90_000);
+const JOB_MAX_TIMEOUT_MS = Number(process.env.JOB_MAX_TIMEOUT_MS ?? 1_800_000);
+const jobTimeoutMs = (steps: number): number =>
+  Math.min(JOB_MAX_TIMEOUT_MS, JOB_BASE_TIMEOUT_MS + JOB_PER_STEP_TIMEOUT_MS * Math.max(1, steps));
 const ENGINE = (process.env.AUDIT_ENGINE ?? "agent-sdk") === "api" ? "api" : "agent-sdk";
 const MODEL = process.env.AUDIT_MODEL ?? AUDIT_MODEL;
 const DEFAULT_VIEWPORT = { width: 1366, height: 768 };
@@ -37,6 +42,27 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
   });
   promise.catch(() => {});
   return Promise.race([promise, timeout]).finally(() => clearTimeout(timer)) as Promise<T>;
+}
+
+/**
+ * Layer-2 deduplication: drop any violation whose signature
+ * (`heuristic | severity | code_fix`) has ALREADY appeared in an earlier step.
+ * Kills persistent components (header, nav, cookie banner) that get re-reported
+ * across scroll steps. Mutates each step's `violations` array in place.
+ * (`suggested_code_fix` is what becomes the DB `code_fix` column.)
+ */
+function deduplicateViolations<
+  V extends { heuristic: string; severity: number; suggested_code_fix: string },
+>(steps: Array<{ violations: V[] }>): void {
+  const seen = new Set<string>();
+  for (const step of steps) {
+    step.violations = step.violations.filter((v) => {
+      const signature = `${v.heuristic}|${v.severity}|${v.suggested_code_fix}`;
+      if (seen.has(signature)) return false;
+      seen.add(signature);
+      return true;
+    });
+  }
 }
 
 /**
@@ -87,15 +113,20 @@ async function runAuditPipeline(job: Job<AuditJobData, AuditReport>, reportDir: 
     steps.push({ step_name: name, screenshot_url, violations });
   }
 
+  // --- Layer 2: cross-step dedup (persistent header/nav repeated across scrolls) ---
+  deduplicateViolations(steps);
+
   // --- Persist the whole report in a single transaction. Idempotent per job_id:
   // remove any prior report for this job_id first (e.g. a re-run, or a BullMQ id
   // reused after the queue was drained) so the unique(job_id) never collides. ---
+  // total_violations is recomputed AFTER dedup so it counts only what remains.
   const total_violations = steps.reduce((n, s) => n + s.violations.length, 0);
   await prisma.$transaction([
-    prisma.auditReport.deleteMany({ where: { job_id: jobId } }),
+    prisma.auditReport.deleteMany({ where: { job_id: jobId, user_id: job.data.user_id } }),
     prisma.auditReport.create({
       data: {
         job_id: jobId,
+        user_id: job.data.user_id,
         target_url: config.target_url,
         total_violations,
         steps: {
@@ -128,8 +159,10 @@ const worker = new Worker<AuditJobData, AuditReport>(
         `[engine: ${ENGINE}, model: ${MODEL}]`,
     );
     try {
-      // All Playwright + AI + S3 + DB work is bounded and guarded here.
-      const report = await withTimeout(runAuditPipeline(job, reportDir), JOB_TIMEOUT_MS, `Job ${job.id}`);
+      // All Playwright + AI + S3 + DB work is bounded and guarded here. Budget
+      // scales with the number of steps so long flows finish.
+      const timeoutMs = jobTimeoutMs(job.data.flow.length);
+      const report = await withTimeout(runAuditPipeline(job, reportDir), timeoutMs, `Job ${job.id}`);
       logger.success(
         `Job ${job.id} persisted — ${report.total_violations} violation(s) across ${report.analyzed_steps} step(s)`,
       );
@@ -153,7 +186,7 @@ const worker = new Worker<AuditJobData, AuditReport>(
   {
     connection: redisConnectionOptions,
     concurrency: CONCURRENCY,
-    lockDuration: JOB_TIMEOUT_MS + 30_000,
+    lockDuration: JOB_MAX_TIMEOUT_MS + 30_000,
   },
 );
 
