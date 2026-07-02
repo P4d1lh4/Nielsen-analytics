@@ -16,5 +16,6 @@
     "sourceMap": true
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "dist"]
+  // ponytail: tests run via `tsx --test`, kept out of the emitted build
+  "exclude": ["node_modules", "dist", "src/**/*.test.ts"]
 }

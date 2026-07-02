@@ -1,11 +1,12 @@
 import "dotenv/config";
-import { readFileSync, rmSync } from "node:fs";
+import { rmSync } from "node:fs";
 import { join } from "node:path";
 import { Worker, type Job } from "bullmq";
 import { PrismaClient } from "@prisma/client";
 import { redisConnectionOptions, throttle } from "./connection";
 import { AUDIT_QUEUE_NAME, type AuditJobData } from "./schema";
 import { uploadScreenshot } from "./storage";
+import { requireEnv } from "../config/env";
 import { logger } from "../logger";
 
 // --- Core pipeline pieces (Phases 1 & 2) reused from the CLI. Phase 3 (HTML) is gone. ---
@@ -17,7 +18,7 @@ import { stepName } from "../evaluator/payload";
 import { Evaluator, runAnalysis, AUDIT_MODEL } from "../evaluator/evaluator";
 import { AgentSdkEvaluator } from "../evaluator/agentEngine";
 import { createClient } from "../evaluator/client";
-import { writeReport, type AuditReport } from "../evaluator/report";
+import { buildReport, type AuditReport } from "../evaluator/report";
 
 // Max 2 jobs at once (each spins a real browser + LLM).
 const CONCURRENCY = Number(process.env.WORKER_CONCURRENCY ?? 2);
@@ -31,6 +32,9 @@ const jobTimeoutMs = (steps: number): number =>
 const ENGINE = (process.env.AUDIT_ENGINE ?? "agent-sdk") === "api" ? "api" : "agent-sdk";
 const MODEL = process.env.AUDIT_MODEL ?? AUDIT_MODEL;
 const DEFAULT_VIEWPORT = { width: 1366, height: 768 };
+
+// Fail fast on missing config instead of erroring on the first job's S3 upload.
+requireEnv(["DATABASE_URL", "S3_ENDPOINT", "S3_BUCKET_NAME", "S3_ACCESS_KEY", "S3_SECRET_KEY"]);
 
 const prisma = new PrismaClient();
 
@@ -68,7 +72,7 @@ function deduplicateViolations<
 /**
  * Runs the real audit (Phase 1 capture + Phase 2 AI), uploads each screenshot to
  * S3, and persists the report + steps + violations to Postgres in one transaction.
- * Returns the parsed `audit-report.json`. Throws on any failure.
+ * Returns the built audit report. Throws on any failure.
  */
 async function runAuditPipeline(job: Job<AuditJobData, AuditReport>, reportDir: string): Promise<AuditReport> {
   const jobId = String(job.id);
@@ -95,12 +99,13 @@ async function runAuditPipeline(job: Job<AuditJobData, AuditReport>, reportDir: 
       ? new AgentSdkEvaluator(reportDir, MODEL)
       : new Evaluator(createClient(), reportDir, MODEL);
   const results = await runAnalysis(analyzer, entries);
-  writeReport(reportDir, results, MODEL);
   const failures = results.filter((r) => r.error);
   if (failures.length > 0) {
     throw new Error(`Analysis failed on ${failures.length}/${results.length} step(s): ${failures[0]?.error}`);
   }
-  const report = JSON.parse(readFileSync(join(reportDir, "audit-report.json"), "utf8")) as AuditReport;
+  // Build the report object directly — the service flow never needs the JSON on
+  // disk (the workspace is wiped in `finally`), so no write+re-read round-trip.
+  const report = buildReport(results, MODEL);
 
   // --- Upload each step's screenshot to S3 and build the relational step records ---
   const auditByName = new Map(results.map((r) => [r.step_name, r]));

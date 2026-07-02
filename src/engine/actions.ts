@@ -1,5 +1,6 @@
 import type { Page } from "playwright";
 import type { FlowAction } from "../config/schema";
+import { assertPublicUrl } from "./urlGuard";
 
 /**
  * Executes a single flow action against the page.
@@ -11,6 +12,7 @@ import type { FlowAction } from "../config/schema";
 export async function executeAction(page: Page, action: FlowAction): Promise<void> {
   switch (action.action) {
     case "goto":
+      await assertPublicUrl(action.url); // SSRF guard
       await page.goto(action.url, { waitUntil: "domcontentloaded" });
       return;
     case "click":
