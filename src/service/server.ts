@@ -2,6 +2,7 @@ import "dotenv/config";
 import express, { type Request, type Response, type NextFunction } from "express";
 import helmet from "helmet";
 import cors from "cors";
+import { rateLimit } from "express-rate-limit";
 import { clerkMiddleware, getAuth } from "@clerk/express";
 import { Webhook } from "svix";
 import { PrismaClient } from "@prisma/client";
@@ -102,8 +103,20 @@ export function createServer() {
     res.json({ status: "ok", redis: isRedisReady() ? "ready" : "down" });
   });
 
+  // Rate-limit the expensive enqueue endpoint per authenticated user.
+  // ponytail: in-memory store (single instance). For multiple API replicas, swap
+  // in a Redis store (rate-limit-redis) so the limit is shared across them.
+  const auditLimiter = rateLimit({
+    windowMs: 5 * 60_000,
+    limit: Number(process.env.AUDIT_RATE_LIMIT ?? 10),
+    standardHeaders: "draft-7",
+    legacyHeaders: false,
+    keyGenerator: (req: Request) => getAuth(req).userId ?? "anon",
+    message: { error: "Too many audit requests — please slow down." },
+  });
+
   // Enqueue an audit job — returns 202 immediately, does not wait for completion.
-  app.post("/api/audit", async (req: Request, res: Response) => {
+  app.post("/api/audit", auditLimiter, async (req: Request, res: Response) => {
     const userId = getAuth(req).userId;
     if (!userId) return res.status(401).json({ error: "Unauthorized" });
 

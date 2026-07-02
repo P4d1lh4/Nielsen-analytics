@@ -11,7 +11,7 @@ Atualizado a cada melhoria. Status: `Não iniciada` · `Em andamento` ·
 | 03 | SEC-2 | Storage privado + URLs assinadas | Concluída | ✅ typecheck, test 12/12, build | [03-storage-privado.md](03-storage-privado.md) |
 | 04 | SEC-3 | Client: integração Clerk | Bloqueada | — | — |
 | 05 | DB-1 | Migration `user_id` segura | Pendente (precisa DB) | — | — |
-| 06 | SEC-4 | Rate limiting | Pendente (precisa Redis) | — | — |
+| 06 | SEC-4 | Rate limiting | Concluída | ✅ typecheck, test 19/19, build | [06-rate-limit.md](06-rate-limit.md) |
 | 07 | BE-1 | Fila com retry/backoff | Concluída | ✅ typecheck, test 14/14, build | [07-fila-retry.md](07-fila-retry.md) |
 | 08 | DB-2 | Índices de FK + composto | Concluída | ✅ prisma validate; aplicar migração pendente | [08-indices-db.md](08-indices-db.md) |
 | 09 | OBS-1 | Logger estruturado | Concluída | ✅ typecheck, test 14/14, build | [09-logger-estruturado.md](09-logger-estruturado.md) |
