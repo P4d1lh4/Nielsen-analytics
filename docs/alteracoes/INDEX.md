@@ -23,8 +23,8 @@ Atualizado a cada melhoria. Status: `Não iniciada` · `Em andamento` ·
 | 15 | DOCK-1 | Docker non-root + healthcheck + volumes | Concluída | ✅ compose config; build real pendente | [15-docker-hardening.md](15-docker-hardening.md) |
 | 16 | CFG-1 | `.env.example` + validação de env | Concluída | ✅ typecheck, test 17/17, build | [16-env-example-validacao.md](16-env-example-validacao.md) |
 | 17 | CQ-1 | ESLint/Prettier no backend | Não iniciada | — | — |
-| 18 | UX-1 | Acessibilidade no client | Bloqueada (client) | — | — |
-| 19 | CQ-2 | Tipos compartilhados client/server | Bloqueada (client) | — | — |
+| 18 | UX-1 | Acessibilidade no client | Concluída | ✅ client build | [18-acessibilidade-client.md](18-acessibilidade-client.md) |
+| 19 | CQ-2 | Tipos client/server (scroll) | Concluída | ✅ client build | [19-tipos-client-scroll.md](19-tipos-client-scroll.md) |
 | 20 | API-2 | Envelope + versionamento + idempotência | Pendente (acopla client / precisa Redis) | — | — |
 | 21 | CQ-3 | Limpeza backend (round-trip disco, asserts) | Concluída | ✅ typecheck, test 19/19, build | [21-cleanup-backend.md](21-cleanup-backend.md) |
 | 22 | DEP-1 | Divergência zod/TS root×client | Bloqueada (client) | — | — |

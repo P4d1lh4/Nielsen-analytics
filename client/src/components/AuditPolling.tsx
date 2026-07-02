@@ -60,7 +60,11 @@ export function AuditPolling({ jobId, onComplete, onFailed }: Props) {
   }, [jobId]);
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-10 flex flex-col items-center text-center">
+    <div
+      role="status"
+      aria-live="polite"
+      className="bg-white rounded-xl border border-slate-200 shadow-sm p-10 flex flex-col items-center text-center"
+    >
       <Loader2 className="h-10 w-10 text-indigo-600 animate-spin" />
       <h2 className="mt-4 text-lg font-semibold text-slate-800">Auditoria em andamento</h2>
       <p className="mt-1 text-sm text-slate-500">
