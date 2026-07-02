@@ -9,7 +9,7 @@ Atualizado a cada melhoria. Status: `Não iniciada` · `Em andamento` ·
 | 01 | TEST-1 | Harness de testes + typecheck + CI mínimo | Concluída | ✅ typecheck, test, build | [01-harness-testes.md](01-harness-testes.md) |
 | 02 | SEC-1 | SSRF: bloqueio de host antes do `goto` | Concluída | ✅ typecheck, test 10/10, build | [02-ssrf.md](02-ssrf.md) |
 | 03 | SEC-2 | Storage privado + URLs assinadas | Concluída | ✅ typecheck, test 12/12, build | [03-storage-privado.md](03-storage-privado.md) |
-| 04 | SEC-3 | Client: integração Clerk | Bloqueada | — | — |
+| 04 | SEC-3 | Client: integração Clerk | Concluída | ✅ client build; chave em runtime pendente | [04-client-clerk.md](04-client-clerk.md) |
 | 05 | DB-1 | Migration `user_id` segura | Pendente (precisa DB) | — | — |
 | 06 | SEC-4 | Rate limiting | Concluída | ✅ typecheck, test 19/19, build | [06-rate-limit.md](06-rate-limit.md) |
 | 07 | BE-1 | Fila com retry/backoff | Concluída | ✅ typecheck, test 14/14, build | [07-fila-retry.md](07-fila-retry.md) |
