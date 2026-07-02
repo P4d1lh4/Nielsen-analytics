@@ -15,7 +15,7 @@ Atualizado a cada melhoria. Status: `Não iniciada` · `Em andamento` ·
 | 07 | BE-1 | Fila com retry/backoff | Concluída | ✅ typecheck, test 14/14, build | [07-fila-retry.md](07-fila-retry.md) |
 | 08 | DB-2 | Índices de FK + composto | Concluída | ✅ prisma validate; aplicar migração pendente | [08-indices-db.md](08-indices-db.md) |
 | 09 | OBS-1 | Logger estruturado | Concluída | ✅ typecheck, test 14/14, build | [09-logger-estruturado.md](09-logger-estruturado.md) |
-| 10 | OBS-2 | `/health` completo + métricas | Pendente (precisa infra + dep) | — | — |
+| 10 | OBS-2 | `/health` readiness (métricas follow-up) | Parcial | ✅ typecheck/build | [10-health-readiness.md](10-health-readiness.md) |
 | 11 | ARCH-1 | Pipeline compartilhado CLI×worker | Não iniciada (refactor, aguarda decisão) | — | — |
 | 12 | BE-2 | Graceful shutdown do server | Concluída | ✅ typecheck, test 14/14, build | [12-graceful-shutdown.md](12-graceful-shutdown.md) |
 | 13 | API-1 | Paginação + tela de histórico | Pendente (acopla client + precisa DB) | — | — |
@@ -27,5 +27,5 @@ Atualizado a cada melhoria. Status: `Não iniciada` · `Em andamento` ·
 | 19 | CQ-2 | Tipos client/server (scroll) | Concluída | ✅ client build | [19-tipos-client-scroll.md](19-tipos-client-scroll.md) |
 | 20 | API-2 | Envelope + versionamento + idempotência | Pendente (acopla client / precisa Redis) | — | — |
 | 21 | CQ-3 | Limpeza backend (round-trip disco, asserts) | Concluída | ✅ typecheck, test 19/19, build | [21-cleanup-backend.md](21-cleanup-backend.md) |
-| 22 | DEP-1 | Divergência zod/TS root×client | Bloqueada (client) | — | — |
+| 22 | DEP-1 | Vuln client corrigida (divergência anotada) | Concluída | ✅ npm audit 0, build | [22-dep-1-vuln.md](22-dep-1-vuln.md) |
 | 23 | DOC-1 | Documentar serviço no README (+OpenAPI pendente) | Concluída | ✅ revisão (docs) | [23-doc-servico.md](23-doc-servico.md) |

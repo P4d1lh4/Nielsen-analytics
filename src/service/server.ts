@@ -98,9 +98,19 @@ export function createServer() {
   // Attach Clerk auth context to every request (reads CLERK_* from env).
   app.use(clerkMiddleware());
 
-  // Liveness + Redis readiness (public).
-  app.get("/health", (_req: Request, res: Response) => {
-    res.json({ status: "ok", redis: isRedisReady() ? "ready" : "down" });
+  // Readiness (public): the API needs Postgres to serve; Redis is reported but
+  // not fatal (reads work without the queue). 503 when the DB is unreachable.
+  app.get("/health", async (_req: Request, res: Response) => {
+    let db = "down";
+    try {
+      await prisma.$queryRaw`SELECT 1`;
+      db = "ready";
+    } catch {
+      db = "down";
+    }
+    const redis = isRedisReady() ? "ready" : "down";
+    const ok = db === "ready";
+    res.status(ok ? 200 : 503).json({ status: ok ? "ok" : "degraded", db, redis });
   });
 
   // Rate-limit the expensive enqueue endpoint per authenticated user.
