@@ -10,7 +10,7 @@ Atualizado a cada melhoria. Status: `Não iniciada` · `Em andamento` ·
 | 02 | SEC-1 | SSRF: bloqueio de host antes do `goto` | Concluída | ✅ typecheck, test 10/10, build | [02-ssrf.md](02-ssrf.md) |
 | 03 | SEC-2 | Storage privado + URLs assinadas | Concluída | ✅ typecheck, test 12/12, build | [03-storage-privado.md](03-storage-privado.md) |
 | 04 | SEC-3 | Client: integração Clerk | Concluída | ✅ client build; chave em runtime pendente | [04-client-clerk.md](04-client-clerk.md) |
-| 05 | DB-1 | Migration `user_id` segura | Pendente (precisa DB) | — | — |
+| 05 | DB-1 | Migration `user_id` (decisão: sem ação retroativa) | Concluída | — (documentado) | [05-migration-user-id.md](05-migration-user-id.md) |
 | 06 | SEC-4 | Rate limiting | Concluída | ✅ typecheck, test 19/19, build | [06-rate-limit.md](06-rate-limit.md) |
 | 07 | BE-1 | Fila com retry/backoff | Concluída | ✅ typecheck, test 14/14, build | [07-fila-retry.md](07-fila-retry.md) |
 | 08 | DB-2 | Índices de FK + composto | Concluída | ✅ prisma validate; aplicar migração pendente | [08-indices-db.md](08-indices-db.md) |
