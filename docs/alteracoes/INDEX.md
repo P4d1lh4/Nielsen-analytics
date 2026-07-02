@@ -13,7 +13,7 @@ Atualizado a cada melhoria. Status: `Não iniciada` · `Em andamento` ·
 | 05 | DB-1 | Migration `user_id` segura | Pendente (precisa DB) | — | — |
 | 06 | SEC-4 | Rate limiting | Pendente (precisa Redis) | — | — |
 | 07 | BE-1 | Fila com retry/backoff | Concluída | ✅ typecheck, test 14/14, build | [07-fila-retry.md](07-fila-retry.md) |
-| 08 | DB-2 | Índices de FK + composto | Pendente (precisa DB) | — | — |
+| 08 | DB-2 | Índices de FK + composto | Concluída | ✅ prisma validate; aplicar migração pendente | [08-indices-db.md](08-indices-db.md) |
 | 09 | OBS-1 | Logger estruturado | Concluída | ✅ typecheck, test 14/14, build | [09-logger-estruturado.md](09-logger-estruturado.md) |
 | 10 | OBS-2 | `/health` completo + métricas | Pendente (precisa infra + dep) | — | — |
 | 11 | ARCH-1 | Pipeline compartilhado CLI×worker | Não iniciada (refactor, aguarda decisão) | — | — |
