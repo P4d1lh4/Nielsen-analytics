@@ -17,22 +17,29 @@ export interface AuditReport {
   errors: { step_name: string; error: string }[];
 }
 
-/** Writes `audit-report.json` to the report directory and returns its path. */
-export function writeReport(reportDir: string, results: StepResult[], model: string = AUDIT_MODEL): string {
-  const analyzed = results.filter((r) => r.audit);
-  const failed = results.filter((r) => r.error);
+type AnalyzedStep = StepResult & { audit: StepAudit };
+type FailedStep = StepResult & { error: string };
 
-  const report: AuditReport = {
+/** Builds the report object from step results. Pure — no I/O. */
+export function buildReport(results: StepResult[], model: string = AUDIT_MODEL): AuditReport {
+  const analyzed = results.filter((r): r is AnalyzedStep => Boolean(r.audit));
+  const failed = results.filter((r): r is FailedStep => Boolean(r.error));
+
+  return {
     generated_at: new Date().toISOString(),
     model,
     total_steps: results.length,
     analyzed_steps: analyzed.length,
     failed_steps: failed.length,
-    total_violations: analyzed.reduce((n, r) => n + r.audit!.violations.length, 0),
-    results: analyzed.map((r) => r.audit!),
-    errors: failed.map((r) => ({ step_name: r.step_name, error: r.error! })),
+    total_violations: analyzed.reduce((n, r) => n + r.audit.violations.length, 0),
+    results: analyzed.map((r) => r.audit),
+    errors: failed.map((r) => ({ step_name: r.step_name, error: r.error })),
   };
+}
 
+/** Writes `audit-report.json` to the report directory and returns its path. */
+export function writeReport(reportDir: string, results: StepResult[], model: string = AUDIT_MODEL): string {
+  const report = buildReport(results, model);
   const path = join(reportDir, "audit-report.json");
   writeFileSync(path, JSON.stringify(report, null, 2), "utf8");
   return path;
@@ -45,7 +52,8 @@ export function printSummary(results: StepResult[]): void {
       logger.error(`${r.step_name}: ${r.error}`);
       continue;
     }
-    const violations = r.audit!.violations;
+    if (!r.audit) continue;
+    const violations = r.audit.violations;
     if (violations.length === 0) {
       logger.success(`${r.step_name}: no violations`);
       continue;

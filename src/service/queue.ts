@@ -8,7 +8,12 @@ import { logger } from "../logger";
 export const auditQueue = new Queue<AuditJobData, AuditReport>(AUDIT_QUEUE_NAME, {
   connection: redisConnectionOptions,
   defaultJobOptions: {
-    attempts: 1,
+    // Retry transient failures (Redis/S3 blip, LLM rate-limit, flaky nav) with
+    // exponential backoff. ponytail: deterministic failures (blocked SSRF URL,
+    // bad selector) still burn all 3 attempts — throw UnrecoverableError from the
+    // worker to skip retries for those if the wasted browser launches ever matter.
+    attempts: 3,
+    backoff: { type: "exponential", delay: 5000 },
     removeOnComplete: { age: 3600, count: 1000 }, // keep recent results queryable
     removeOnFail: { age: 24 * 3600 },
   },

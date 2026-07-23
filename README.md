@@ -210,3 +210,55 @@ It runs **Phase 1 → Phase 2 → Phase 3** in order against one freshly-created
 directory. **Fail-fast:** if Playwright fails in capture, or any step errors/times out
 in analysis, the pipeline **aborts immediately with exit 1** and does not run the next
 phase on broken data (the partial manifest/report are left behind for inspection).
+
+## Service (async API + worker)
+
+Besides the CLI, the repo ships a **SaaS service**: an HTTP API enqueues audit
+jobs onto a **BullMQ/Redis** queue; a **worker** runs the same capture+analyze
+pipeline, uploads screenshots to **S3/MinIO** (private bucket, served via
+short-lived presigned URLs) and persists the report to **Postgres via Prisma**.
+Auth is **Clerk**; the Clerk webhook is verified with **svix**.
+
+```
+POST /api/audit         # enqueue a job (Clerk auth) -> 202 { job_id, status }
+GET  /api/audit         # list the caller's audit history (Clerk auth)
+GET  /api/audit/:id     # job status / report (Clerk auth; presigned screenshots)
+POST /api/webhook/clerk # Clerk webhook (svix-signed; purges data on user.deleted)
+GET  /health            # liveness + Redis readiness
+```
+
+### Run it
+
+```bash
+cp .env.example .env          # fill in DATABASE_URL, CLERK_*, S3_*, etc.
+docker compose up             # postgres + redis + minio + api + worker
+# or locally, against your own infra:
+npm run serve                 # API   (tsx src/service/server.ts)
+npm run worker                # worker (tsx src/service/worker.ts)
+```
+
+### Required env
+
+Validated at boot (fail-fast). See [`.env.example`](.env.example) for the full list.
+
+| Var | Used by | Notes |
+|---|---|---|
+| `DATABASE_URL` | api, worker | Postgres (Prisma) |
+| `REDIS_URL` | api, worker | optional; defaults to `redis://127.0.0.1:6379` |
+| `CLERK_SECRET_KEY` | api | required for auth |
+| `CLERK_WEBHOOK_SECRET` | api | required only to use the webhook |
+| `S3_ENDPOINT` / `S3_BUCKET_NAME` / `S3_ACCESS_KEY` / `S3_SECRET_KEY` | worker | private bucket |
+| `S3_PUBLIC_ENDPOINT` | api | host-reachable endpoint for signing screenshot URLs (MinIO split-horizon) |
+| `AUDIT_ENGINE` / `AUDIT_MODEL` / `AI_API_KEY` | worker | `api` engine needs `AI_API_KEY` |
+| `CORS_ORIGIN` | api | comma-separated allowlist; unset = no cross-origin |
+| `LOG_JSON` | all | `1` forces JSON logs (auto-on when `NODE_ENV=production`) |
+
+### Tests & CI
+
+```bash
+npm run typecheck    # tsc --noEmit
+npm test             # node:test via tsx (src/**/*.test.ts)
+npm run build        # tsc -> dist/
+```
+
+CI (`.github/workflows/ci.yml`) runs typecheck → test → build on every push/PR.

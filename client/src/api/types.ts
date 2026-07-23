@@ -3,11 +3,15 @@
 // ---------- Request payload (POST /api/audit) ----------
 
 /** A single interaction in the audit flow (discriminated union on `action`). */
+// Keep in sync with the backend discriminated union (src/config/schema.ts).
+// ponytail: a shared types package would prevent drift, but that is monorepo
+// tooling for later — for now the two lists must be updated together.
 export type FlowAction =
   | { action: "goto"; url: string }
   | { action: "click"; selector: string }
   | { action: "type"; selector: string; text: string }
-  | { action: "wait"; ms: number };
+  | { action: "wait"; ms: number }
+  | { action: "scroll" };
 
 export interface Viewport {
   width: number;

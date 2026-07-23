@@ -40,6 +40,11 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/package.json ./package.json
 
+# Drop root: run as the image's built-in non-root user. Pre-create the writable
+# workspace the worker uses (/app itself stays root-owned).
+RUN mkdir -p /app/.ux-audit-reports && chown -R pwuser:pwuser /app/.ux-audit-reports
+USER pwuser
+
 EXPOSE 3000
 
 # Default process = API. The worker overrides this via docker-compose `command`.

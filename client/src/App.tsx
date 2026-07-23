@@ -42,7 +42,7 @@ export default function App() {
         )}
 
         {view.kind === "error" && (
-          <div className="bg-white rounded-xl border border-red-200 shadow-sm p-8 text-center">
+          <div role="alert" className="bg-white rounded-xl border border-red-200 shadow-sm p-8 text-center">
             <AlertCircle className="h-10 w-10 text-red-500 mx-auto" />
             <h2 className="mt-3 text-lg font-semibold text-slate-800">Falha na auditoria</h2>
             <p className="mt-1 text-sm text-red-600 break-words">{view.message}</p>

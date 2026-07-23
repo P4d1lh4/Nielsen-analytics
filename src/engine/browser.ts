@@ -3,6 +3,7 @@ import type { AuditConfig } from "../config/schema";
 import { Manifest } from "../output/manifest";
 import { captureArtifacts } from "../capture/artifacts";
 import { executeAction, describeAction } from "./actions";
+import { assertPublicUrl } from "./urlGuard";
 import { logger } from "../logger";
 
 /** Max time a selector-based action may wait before it is treated as a failure. */
@@ -49,6 +50,7 @@ export class AuditEngine {
     try {
       // Initial load of the application under test.
       logger.info(`Navigating to target: ${this.config.target_url}`);
+      await assertPublicUrl(this.config.target_url); // SSRF guard
       await this.page.goto(this.config.target_url, { waitUntil: "domcontentloaded" });
 
       const total = this.config.flow.length;

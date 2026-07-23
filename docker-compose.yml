@@ -8,8 +8,10 @@ x-app-env: &app-env
   S3_SECRET_KEY: rootpassword
   S3_BUCKET_NAME: ux-audit-bucket
   S3_FORCE_PATH_STYLE: "true"
-  # Public URL must be reachable by CLIENTS (host), not the internal minio hostname.
-  S3_PUBLIC_URL: http://localhost:9000/ux-audit-bucket
+  # Host-reachable endpoint used ONLY to sign screenshot URLs (the worker uploads
+  # via the internal `minio:9000`, but the browser loads the presigned URL from
+  # the host). Private bucket — objects are served via short-lived presigned URLs.
+  S3_PUBLIC_ENDPOINT: http://localhost:9000
   # AI engine: agent-sdk needs an interactive Claude Code login (absent in a
   # container), so containerized workers use the API engine. Provide AI_API_KEY.
   AUDIT_ENGINE: ${AUDIT_ENGINE:-api}
@@ -44,6 +46,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    volumes:
+      - pgdata:/var/lib/postgresql/data
 
   minio:
     image: minio/minio:latest
@@ -60,6 +64,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    volumes:
+      - miniodata:/data
 
   minio-setup:
     image: minio/mc:latest
@@ -71,7 +77,6 @@ services:
       /bin/sh -c "
       /usr/bin/mc alias set myminio http://minio:9000 rootadmin rootpassword;
       /usr/bin/mc mb myminio/ux-audit-bucket --ignore-existing;
-      /usr/bin/mc anonymous set download myminio/ux-audit-bucket;
       exit 0;
       "
 
@@ -89,6 +94,11 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
 
   worker:
@@ -111,3 +121,7 @@ services:
         limits:
           memory: 2G
     restart: unless-stopped
+
+volumes:
+  pgdata:
+  miniodata:

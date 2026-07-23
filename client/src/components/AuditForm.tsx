@@ -78,13 +78,16 @@ export function AuditForm({ onSubmitted }: Props) {
           value={flowJson}
           onChange={(e) => setFlowJson(e.target.value)}
           spellCheck={false}
+          aria-describedby="flow-hint"
           className="w-full rounded-lg border border-slate-300 px-3 py-2 font-mono text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
         />
-        <p className="mt-1 text-xs text-slate-400">Ações suportadas: goto · click · type · wait</p>
+        <p id="flow-hint" className="mt-1 text-xs text-slate-400">
+          Ações suportadas: goto · click · type · wait · scroll
+        </p>
       </div>
 
       {error && (
-        <div className="rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2">
+        <div role="alert" className="rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2">
           {error}
         </div>
       )}

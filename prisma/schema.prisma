@@ -18,7 +18,7 @@ model AuditReport {
   total_violations Int         @default(0)
   steps            AuditStep[]
 
-  @@index([user_id])
+  @@index([user_id, created_at])
   @@map("audit_reports")
 }
 
@@ -30,6 +30,7 @@ model AuditStep {
   report         AuditReport @relation(fields: [report_id], references: [id], onDelete: Cascade)
   violations     Violation[]
 
+  @@index([report_id])
   @@map("audit_steps")
 }
 
@@ -42,5 +43,6 @@ model Violation {
   code_fix          String
   step              AuditStep @relation(fields: [step_id], references: [id], onDelete: Cascade)
 
+  @@index([step_id])
   @@map("violations")
 }
