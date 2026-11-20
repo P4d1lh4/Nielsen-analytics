@@ -5,6 +5,10 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/P4d1lh4/Nielsen-analytics/actions/workflows/ci.yml"><img src="https://github.com/P4d1lh4/Nielsen-analytics/actions/workflows/ci.yml/badge.svg" alt="CI status"/></a>
+</p>
+
+<p align="center">
   <img src="https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript"/>
   <img src="https://img.shields.io/badge/Playwright-2EAD33?style=for-the-badge&logo=playwright&logoColor=white" alt="Playwright"/>
   <img src="https://img.shields.io/badge/Claude-D97757?style=for-the-badge&logo=anthropic&logoColor=white" alt="Claude"/>
