@@ -16,7 +16,11 @@ jobs:
       # --ignore-scripts skips the heavy postinstall (Playwright download);
       # the browser isn't needed for typecheck/test/build.
       - run: npm ci --ignore-scripts
+      # prisma.config.ts requires DATABASE_URL to load. `generate` never connects,
+      # so a placeholder is enough here.
       - run: npx prisma generate
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
